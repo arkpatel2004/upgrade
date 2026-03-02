@@ -1,0 +1,30 @@
+# Node / React
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+.venv
+*.venv/
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# Vector Database (ChromaDB)
+chroma_db/
+*.sqlite3
+
+# IDE and OS Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

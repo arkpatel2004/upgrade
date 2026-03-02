@@ -1,0 +1,52 @@
+stage,message
+Technical,"Hello,
+
+I have just started to work on this technical issue and will get back to you soon with a solution and/or an explanation of what happened and why the problem cannot be corrected from our side.
+
+Thank you for your patience.
+Have a nice day,
+Ark Patel"
+Code Review,"Hello,
+
+Good news - I found the cause of the problem and prepared a solution.
+
+To make sure my solution does not cause any complications elsewhere in the database, it is now being reviewed by a second developer. This won’t take long and you will receive the resolution and/or a link with a newly upgraded test database shortly.
+
+Best regards,
+Ark Patel"
+Customer Feedback(Saas),"Hello, 
+
+Good news! We found a solution for your problem and we have applied a fix specifically to your upgrade script, which will rectify the issue for every subsequent upgraded database. 
+
+Here is the upgraded (test) database link: xxx
+
+Can you please confirm the issue has indeed been resolved in this database?
+
+If there is anything else we can do for you, please let us know. 
+
+Thank you for your feedback
+Best Regards,
+Ark Patel"
+Customer Feedback(sh/premise),"Hello,
+
+Good news! We found a solution for your problem and we have applied a fix specifically to your upgrade script, which will rectify the issue for every subsequent upgraded database.
+
+Please request for a new upgrade test database, to check for the changed.
+
+Can you please confirm the issue has indeed been resolved with new upgrade request?
+
+If there is anything else we can do for you, please let us know.
+
+Thank you for your feedback
+Best Regards,
+Ark Patel"
+Done,"Hello,
+
+Thank you for your positive feedback. We are pleased that we were able to assist you in a timely manner and handle all of your concerns.
+
+As we close this ticket, if you face any problems or issues, please open a new ticket at https://www.odoo.com/help and we will assist you again.
+
+Thank you very much!
+
+Best Regards,
+Ark Patel"
