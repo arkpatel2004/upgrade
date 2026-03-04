@@ -129,10 +129,8 @@ function App() {
                       </div>
                     </div>
                     <div className="relative group px-5 py-3.5 rounded-2xl shadow-sm bg-[#5436DA] text-white rounded-tr-none">
-                      <div className="prose prose-invert max-w-none text-[15px]">
-                        {msg.content.split('\n').map((line, i) => (
-                          <p key={i} className="mb-1 leading-relaxed whitespace-pre-wrap">{line}</p>
-                        ))}
+                      <div className="prose prose-invert max-w-none text-[15px] whitespace-pre-wrap leading-relaxed">
+                        {msg.content}
                       </div>
                     </div>
                   </>
@@ -144,10 +142,8 @@ function App() {
                       </div>
                     </div>
                     <div className={`relative group px-5 py-3.5 rounded-2xl shadow-sm ${msg.isError ? 'bg-red-500/20 text-red-200 border border-red-500/30 rounded-tl-none' : 'bg-[#444654] border border-white/5 rounded-tl-none'}`}>
-                      <div className="prose prose-invert max-w-none text-[15px]">
-                        {msg.content.split('\n').map((line, i) => (
-                          <p key={i} className="mb-1 leading-relaxed whitespace-pre-wrap">{line}</p>
-                        ))}
+                      <div className="prose prose-invert max-w-none text-[15px] whitespace-pre-wrap leading-relaxed">
+                        {msg.content}
                       </div>
 
                       {msg.contextCount > 0 && (
