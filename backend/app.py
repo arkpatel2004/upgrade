@@ -2,21 +2,53 @@ import os
 import uvicorn
 import pandas as pd
 import chromadb
+import asyncio
+import requests
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 import google.generativeai as genai
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
-app = FastAPI()
+# --- 1. The Watcher Class ---
+class CSVWatcher(FileSystemEventHandler):
+    def on_modified(self, event):
+        if event.src_path.endswith("data.csv"):
+            print("\n[\u2714] Detected change in data.csv! Triggering ingest sequence...")
+            try:
+                requests.post("http://127.0.0.1:8000/api/ingest")
+            except Exception as e:
+                print(f"[-] Server not ready yet: {e}")
 
-# Configure CORS for frontend access
+# --- 2. Lifespan Manager ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Run the watcher in a separate thread
+    observer = Observer()
+    observer.schedule(CSVWatcher(), path=".", recursive=False)
+    observer.start()
+    print("Background CSV Watcher started...")
+    
+    yield  # The application runs here
+    
+    # Shutdown: Clean up the thread
+    observer.stop()
+    observer.join()
+    print("Background CSV Watcher stopped.")
+
+# --- 3. App Initialization ---
+app = FastAPI(lifespan=lifespan)
+
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust in prodaction
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -24,6 +56,7 @@ app.add_middleware(
 
 # Initialize Clients
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+# Using 2.5 flash as verified working with user API Key Quotas
 gemini_model = genai.GenerativeModel('gemini-2.5-flash')
 
 # Vector Database
@@ -37,6 +70,7 @@ class QueryRequest(BaseModel):
 def get_embedding(text: str) -> list[float]:
     """Get the Gemini embedding for a given text documents."""
     try:
+        # Using 001 because it's the only one allowed on user's API Key
         result = genai.embed_content(model="models/gemini-embedding-001", content=text)
         return result['embedding']
     except Exception as e:
@@ -54,10 +88,8 @@ def get_query_embedding(text: str):
 
 @app.post("/api/ingest")
 async def ingest_csv():
-    """Read data.csv, create Gemini embeddings, and store them in ChromaDB.
-    You only need to run this ONCE when you update your data.csv!
-    """
     try:
+        print("Starting ingestion process...")
         if not os.path.exists("data.csv"):
             raise HTTPException(status_code=404, detail="data.csv not found")
         
@@ -69,6 +101,7 @@ async def ingest_csv():
         embeddings = []
         
         for index, row in df.iterrows():
+            print(f"Processing row {index + 1}/{len(df)}...")
             content = f"Customer Query: {row['customer_message']}\nOur Standard Response: {row['company_response']}"
             embedding = get_embedding(content)
             
@@ -81,6 +114,10 @@ async def ingest_csv():
             ids.append(f"doc_{index}")
             embeddings.append(embedding)
             
+            # Rate limiting logic: wait 3 seconds to stay under Google Free Tier 15 RPM
+            if index < len(df) - 1:
+                await asyncio.sleep(3)
+                
         if documents:
             collection.upsert(
                 documents=documents,
@@ -88,11 +125,13 @@ async def ingest_csv():
                 metadatas=metadatas,
                 ids=ids
             )
+            print(f"Finished! Ingested {len(documents)} records.")
             return {"message": f"Successfully ingested {len(documents)} records using Gemini."}
         else:
             return {"message": "No documents were processed successfully."}
             
     except Exception as e:
+        print(f"Ingest Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/stages")
@@ -111,7 +150,6 @@ def get_stages():
 async def chat(request: QueryRequest):
     """Retrieve relevant context and generate a response using Gemini."""
     try:
-        # 1. Get embedding for the incoming customer message
         query_embedding_or_error = get_query_embedding(request.message)
         
         if isinstance(query_embedding_or_error, str):
@@ -119,13 +157,11 @@ async def chat(request: QueryRequest):
         
         query_embedding = query_embedding_or_error
 
-        # 2. Search ChromaDB for the most relevant past emails (top 3)
         results = collection.query(
             query_embeddings=[query_embedding],
             n_results=3
         )
         
-        # 3. Extract the context (past company responses)
         context_texts = []
         if results and results['metadatas'] and results['metadatas'][0]:
             for metadata in results['metadatas'][0]:
@@ -133,21 +169,19 @@ async def chat(request: QueryRequest):
                 
         context = "\n\n---\n\n".join(context_texts)
         
-        # Construct the prompt for Gemini LLM
         prompt = f"""
-You are an expert customer support engineer for our company. 
-A customer has just sent the following message:
+        You are an expert customer support engineer.
+        A customer has sent: "{request.message}"
 
-Customer Support Request: "{request.message}"
+        Here is how we successfully solved similar issues in the past:
+        {context}
 
-Below are examples of how we have successfully replied to similar cases in the past:
-{context}
+        Based on the past examples, please generate a response with two distinct sections:
+        1. **Technical Message**: A polite message to the customer explaining the solution.
+        2. **Code Review**: A specific snippet or advice on what code they need to fix.
 
-Draft a professional, clear, and helpful reply to the customer's request. 
-Adopt the tone, formatting, and standard operating procedures shown in our past replies.
-Do not invent capabilities or policies that are not present in the past replies.
-If the request requires troubleshooting steps from the examples, provide them clearly.
-"""
+        Keep the tone professional and consistent with our past data.
+        """
         response = gemini_model.generate_content(prompt)
         
         return {
@@ -163,6 +197,5 @@ If the request requires troubleshooting steps from the examples, provide them cl
 async def root():
     return {"message": "RAG Support API is running via app.py"}
 
-# Start the server programmatically when running `python app.py`
 if __name__ == "__main__":
     uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)
