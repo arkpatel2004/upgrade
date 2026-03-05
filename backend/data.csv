@@ -1,6 +1,47 @@
 customer_message,company_response
-"Hi, I'm trying to log into the portal but it says my account is locked. Can you unlock it?","Hello, I have reviewed your account and it appears to be locked due to multiple failed login attempts. I have sent a password reset link to your email. Please follow the link to unlock your account and reset your password."
-"The reporting section in the dashboard is not loading data for the last month. It just stays blank.","Hi there. We experienced a temporary issue with our reporting database replication yesterday which affected dashboard data loading. We have applied a fix this morning. Please clear your browser cache and try again. If the issue persists, let us know."
-"I need to add three new users to our enterprise plan. How do I do this?","Hello! To add new users to your enterprise plan, navigate to Settings > User Management in your admin portal. Click 'Invite User', enter their email addresses, and select their roles. They will receive an invitation email to set up their accounts."
-"Can you review my API integration code? I keep getting a 401 Unauthorized error when calling the /users endpoint.","Thanks for reaching out. A 401 error usually indicates an issue with the API key or authentication token. Please ensure you are passing the 'Authorization: Bearer <YOUR_API_KEY>' header in your request. Also, verify that your API key has not expired in your developer settings. If you still have trouble, please send a code snippet of how you are making the request, ensuring you redact the actual API key."
-"We just want to say how much we appreciate your quick support last week!","Thank you so much for the kind words! We strive to provide the best possible support to our customers. If you ever need anything else, don't hesitate to reach out."
+"send generic solution message","Hello,
+
+Good news - I found the cause of the problem and prepared a generic solution.
+
+To make sure my solution does not cause any complications elsewhere in the database or any other database because generic fix applies to all database, it is now being reviewed by the RD team. This may take long time and once fix will deploy you will receive the resolution and/or a link with a newly upgraded test database .
+
+Best regards,
+Ark Patel"
+"customer upgraded to production","Hello,
+
+We were handling your ticket at our end, but we observed that you have been already moved to production for the targeted version you wanted to go through.
+
+Can you please confirm whether the issues still occur?
+
+Best Wishes,
+Ark Patel"
+"on which date will my database be automatic upgraded as i need more time for testing","Hello,
+
+I hope you are doing well.
+
+To answer your question, our team processes upgrades in batches, so the exact timing depends on when your specific batch is scheduled. It could happen at any time after this ticket is closed.
+
+I will keep this ticket open for the next few days so you can finalize your testing. Please let me know as soon as you are finished so we can ensure everything is ready for your upgrade.
+
+Best regards,
+Ark Patel"
+"how to create a test upgrade request , i need a fresh test database","Hello,
+
+Thank you for reaching out.
+
+It sounds like you may be looking for steps on how to generate a new test request. You can refer to this guide for instructions on creating an upgrade request: https://www.odoo.com/documentation/19.0/administration/upgrade.html
+
+Alternatively, we can create a v19 test database for you directly and send you the link. Please let us know if you would like us to proceed with that.
+
+If you are instead encountering a different issue, please provide more specific details. A screenshot or video recording showing the error and how to reproduce it would be very helpful for our investigation.
+
+Best regards,
+Ark Patel"
+"i forgot to send reference video make reply","Hello,
+
+My apologies, I forgot to include the reference video in my last email.
+
+Please find it attached . This is the video that shows how to correct the translations from your side.
+
+Best Regards,
+Ark Patel"
