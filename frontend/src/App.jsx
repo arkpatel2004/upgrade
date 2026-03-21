@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { Send, Bot, User, Loader2, Link2, Copy, Check, ArrowLeft, LogOut } from 'lucide-react';
+import XpathApp from './XpathApp';
 
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -341,58 +342,13 @@ function App() {
     </div>
   );
 
-  // ── XPATH APP ─────────────────────────────────────────────────
-  const renderXpathApp = () => (
-    <div className="min-h-screen w-full h-screen relative bg-black flex flex-col overflow-hidden">
-      <div
-        className="absolute inset-0 z-0 pointer-events-none"
-        style={{
-          background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(249,115,22,0.2), transparent 70%), #000000",
-        }}
-      />
-      <header className="relative z-10 flex items-center gap-4 px-6 py-3 border-b border-white/5 bg-black/40 backdrop-blur-md shrink-0">
-        <BackButton />
-        <div className="flex items-center gap-2 border-l border-white/10 pl-4">
-          <svg viewBox="0 0 64 64" className="w-5 h-5" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs><linearGradient id="xHdr" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#F97316" /><stop offset="100%" stopColor="#EC4899" /></linearGradient></defs>
-            <line x1="10" y1="10" x2="54" y2="54" stroke="url(#xHdr)" strokeWidth="10" strokeLinecap="round" />
-            <line x1="54" y1="10" x2="10" y2="54" stroke="url(#xHdr)" strokeWidth="10" strokeLinecap="round" />
-          </svg>
-          <h1 className="text-lg font-semibold tracking-wide text-gray-200">Xpath</h1>
-        </div>
-      </header>
-
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center p-8">
-        <div
-          className="w-32 h-32 mb-8 rounded-3xl flex items-center justify-center"
-          style={{
-            background: "linear-gradient(135deg, rgba(249,115,22,0.15), rgba(236,72,153,0.15))",
-            boxShadow: "0 0 40px rgba(249,115,22,0.3), 0 0 80px rgba(249,115,22,0.1), inset 0 1px 0 rgba(255,255,255,0.08)",
-            border: "1px solid rgba(249,115,22,0.3)",
-            animation: "pulse 2s ease-in-out infinite",
-          }}
-        >
-          <svg viewBox="0 0 64 64" className="w-20 h-20 opacity-90" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs><linearGradient id="xBig" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#F97316" /><stop offset="100%" stopColor="#EC4899" /></linearGradient></defs>
-            <line x1="10" y1="10" x2="54" y2="54" stroke="url(#xBig)" strokeWidth="10" strokeLinecap="round" />
-            <line x1="54" y1="10" x2="10" y2="54" stroke="url(#xBig)" strokeWidth="10" strokeLinecap="round" />
-          </svg>
-        </div>
-        <h2 className="text-4xl font-bold bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent mb-4">
-          Coming Soon
-        </h2>
-        <p className="text-gray-400 text-base max-w-sm text-center leading-relaxed">
-          We are working hard to bring you the new Xpath experience. Check back later for updates!
-        </p>
-      </main>
-    </div>
-  );
+  // ── XPATH APP — delegated to XpathApp component ───────────────
 
   return (
     <>
       {currentView === 'dashboard' && renderDashboard()}
       {currentView === 'reply' && renderReplyApp()}
-      {currentView === 'xpath' && renderXpathApp()}
+      {currentView === 'xpath' && <XpathApp onBack={() => setCurrentView('dashboard')} />}
     </>
   );
 }
