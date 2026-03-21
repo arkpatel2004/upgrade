@@ -92,7 +92,18 @@ async def ingest_csv():
         print("Starting ingestion process...")
         if not os.path.exists("data.csv"):
             raise HTTPException(status_code=404, detail="data.csv not found")
-        
+
+        # --- NEW CODE: WIPE THE DATABASE CLEAN FIRST ---
+        print("Wiping database collection clean to prevent ghost data...")
+        global collection
+        try:
+            chroma_client.delete_collection(name=collection_name)
+            collection = chroma_client.get_or_create_collection(name=collection_name)
+            print("Database is now empty and ready for fresh data.")
+        except Exception as e:
+            print(f"Failed to delete collection, it might be empty already: {e}")
+        # -----------------------------------------------
+
         df = pd.read_csv("data.csv")
         
         documents = []
