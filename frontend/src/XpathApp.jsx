@@ -28,6 +28,32 @@ function getNextChildId(files, parentId) {
     return `${parentId}.${Math.max(...suffixes) + 1}`;
 }
 
+// ── Renumber all files sequentially after a deletion ──────────
+// Files array is already in display order (parents before their children).
+// One pass is enough because parents always appear before their children. if we have file 1.1 and 1.2 and we delete 1.1 then 1.2 should become 1.1
+function renumberFiles(files) {
+    const idMap = {};          // oldId -> newId
+    const counter = {};        // newParentId -> child count
+    return files.map(file => {
+        let newId;
+        if (!file.parentId) {
+            counter['root'] = (counter['root'] || 0) + 1;
+            newId = String(counter['root']);
+        } else {
+            const newParentId = idMap[file.parentId];
+            counter[newParentId] = (counter[newParentId] || 0) + 1;
+            newId = `${newParentId}.${counter[newParentId]}`;
+        }
+        idMap[file.id] = newId;
+        return {
+            ...file,
+            id: newId,
+            name: `File ${newId}`,
+            parentId: file.parentId ? idMap[file.parentId] : null,
+        };
+    });
+}
+
 // ── Code Editor modal / inline ─────────────────────────────────
 function CodePanel({ file, onUpdate, onClose }) {
     const [code, setCode] = useState(file.code || '');
@@ -200,10 +226,12 @@ function Panel({ label, color }) {
     };
 
     const deleteFile = (id) => {
-        // Remove the file and ALL its descendants (any id that starts with id+"." or equals id)
         const prefix = id + '.';
-        setFiles(prev => prev.filter(f => f.id !== id && !f.id.startsWith(prefix)));
-        if (openCodeId === id || openCodeId?.startsWith(prefix)) setOpenCodeId(null);
+        setFiles(prev => renumberFiles(
+            prev.filter(f => f.id !== id && !f.id.startsWith(prefix))
+        ));
+        // Always close the code panel — IDs shift after renumbering
+        setOpenCodeId(null);
     };
 
     const openCode = (id) => setOpenCodeId(id);
