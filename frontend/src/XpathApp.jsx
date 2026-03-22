@@ -45,25 +45,36 @@ function renumberFiles(files) {
             newId = `${newParentId}.${counter[newParentId]}`;
         }
         idMap[file.id] = newId;
-        return {
-            ...file,
-            id: newId,
-            name: `File ${newId}`,
-            parentId: file.parentId ? idMap[file.parentId] : null,
-        };
+        return { ...file, id: newId, name: `File ${newId}`, parentId: file.parentId ? idMap[file.parentId] : null };
     });
 }
 
 // ── Code Editor modal / inline ─────────────────────────────────
-function CodePanel({ file, onUpdate, onClose }) {
+function CodePanel({ file, onUpdate, onClose, showStudio }) {
     const [code, setCode] = useState(file.code || '');
+    const [isStudio, setIsStudio] = useState(file.isStudio || false);
     return (
         <div className="mt-1 mb-2 ml-4 rounded-lg border border-white/10 overflow-hidden">
             <div className="flex items-center justify-between px-3 py-1.5 bg-[#2A2D36] border-b border-white/10">
-                <span className="text-xs font-mono text-gray-400">{file.name} — XML</span>
+                <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono text-gray-400">{file.name} — XML</span>
+                    {showStudio && (
+                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                checked={isStudio}
+                                onChange={e => setIsStudio(e.target.checked)}
+                                className="w-3 h-3 accent-amber-400 cursor-pointer"
+                            />
+                            <span className={`text-[11px] font-medium transition-colors ${isStudio ? 'text-amber-400' : 'text-gray-500'}`}>
+                                Studio
+                            </span>
+                        </label>
+                    )}
+                </div>
                 <button
                     className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
-                    onClick={() => { onUpdate(file.id, code); onClose(); }}
+                    onClick={() => { onUpdate(file.id, code, isStudio); onClose(); }}
                 >
                     Save
                 </button>
@@ -158,7 +169,11 @@ function FileRow({ file, onAddInherited, onAddCode, onDelete, onUpdate, openCode
                     {file.name}
                 </span>
                 {file.code && (
-                    <span className="text-[10px] px-1.5 py-0.5 bg-emerald-500/15 text-emerald-400 rounded border border-emerald-500/20">
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded border
+                        ${file.isStudio
+                            ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                            : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20'
+                        }`}>
                         XML
                     </span>
                 )}
@@ -184,6 +199,7 @@ function FileRow({ file, onAddInherited, onAddCode, onDelete, onUpdate, openCode
                     file={file}
                     onUpdate={onUpdate}
                     onClose={() => setOpenCodeId(null)}
+                    showStudio={depth > 0}
                 />
             )}
         </div>
@@ -206,7 +222,7 @@ function Panel({ label, color }) {
 
     const addMainFile = () => {
         const id = getNextMainId(files);
-        setFiles(prev => [...prev, { id, name: `File ${id}`, parentId: null, code: '' }]);
+        setFiles(prev => [...prev, { id, name: `File ${id}`, parentId: null, code: '', isStudio: false }]);
     };
 
     const addInheritedFile = (parentId) => {
@@ -220,7 +236,7 @@ function Panel({ label, color }) {
                 parentIdx
             );
             const newFiles = [...prev];
-            newFiles.splice(lastDescIdx + 1, 0, { id, name: `File ${id}`, parentId, code: '' });
+            newFiles.splice(lastDescIdx + 1, 0, { id, name: `File ${id}`, parentId, code: '', isStudio: false });
             return newFiles;
         });
     };
@@ -236,8 +252,8 @@ function Panel({ label, color }) {
 
     const openCode = (id) => setOpenCodeId(id);
 
-    const updateCode = (id, code) => {
-        setFiles(prev => prev.map(f => f.id === id ? { ...f, code } : f));
+    const updateCode = (id, code, isStudio) => {
+        setFiles(prev => prev.map(f => f.id === id ? { ...f, code, isStudio: isStudio ?? f.isStudio } : f));
     };
 
     const borderColor = color === 'emerald'
