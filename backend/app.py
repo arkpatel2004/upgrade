@@ -208,5 +208,133 @@ async def chat(request: QueryRequest):
 async def root():
     return {"message": "RAG Support API is running via app.py"}
 
+
+# ── Xpath Upgrade Analyzer ────────────────────────────────────────────────────
+
+class XpathFile(BaseModel):
+    name: str
+    code: str
+    isStudio: bool = False
+
+class XpathAnalyzeRequest(BaseModel):
+    source_version: str
+    target_version: str
+    source_files: list[XpathFile]
+    target_files: list[XpathFile]
+
+def build_file_block(files: list[XpathFile]) -> str:
+    """Format file list into a clear text block for the prompt."""
+    blocks = []
+    for f in files:
+        if not f.code.strip():
+            continue
+        label = f"{f.name} (studio)" if f.isStudio else f.name
+        blocks.append(f"### {label}\n```xml\n{f.code.strip()}\n```")
+    return "\n\n".join(blocks) if blocks else "(no files provided)"
+
+UPGRADE_SCRIPT_SYSTEM_PROMPT = """You are an expert Odoo upgrade engineer at an official Odoo partner company.
+Your job is to write Python upgrade migration scripts that fix broken XPath expressions in Odoo Studio customization views when upgrading between Odoo versions.
+
+## Company Standard for Upgrade Scripts
+
+Follow this EXACT pattern when generating migration scripts:
+
+```python
+from odoo.upgrade import util
+# Only import lxml.etree if you need to replace a node with new XML
+# from lxml import etree
+
+def migrate(cr, version):
+    # Use util.skippable_cm() so a broken view does not abort the entire migration
+    with util.skippable_cm(), util.edit_view(
+        cr, "studio_customization.<view_xml_id>"
+    ) as arch:
+        # --- Fix broken XPath ---
+        # Option A: Update a broken expr attribute to the new valid path
+        arch.find('.//xpath[@expr="<old_xpath>"]').set("expr", "<new_valid_xpath>")
+
+        # Option B: Remove a node that references a field/button that no longer exists
+        node = arch.find(".//field[@name='<removed_field>']")
+        node.getparent().remove(node)
+
+        # Option C: Fix an attribute value (e.g. t-if, t-field, groups, etc.)
+        arch.find('.//some_tag[@old_attr="old_val"]').set("attr_name", "new_value")
+
+        # Option D: Replace a node entirely with new XML
+        # from lxml import etree
+        # old_node = arch.find(...)
+        # old_node.getparent().replace(old_node, etree.fromstring("<new_xml/>"))
+```
+
+## Rules
+1. One `with util.skippable_cm(), util.edit_view(cr, "...") as arch:` block PER studio view file.
+2. Extract the studio view xml_id from the `<record id="...">` tag in the XML, prefixed with `studio_customization.`.
+3. Use `util.skippable_cm()` on EVERY block — never omit it.
+4. Do NOT touch base/standard view files — only fix studio (inherited) view files.
+5. Compare the source version base view to the target version base view to identify what changed (fields renamed, removed, moved). Then fix the studio inherited view xpaths to match the new structure.
+6. Only output valid Python code, no explanations outside of inline comments.
+7. If multiple studio files need fixing, emit multiple `with` blocks in a single `migrate` function.
+8. Add a brief inline comment above each fix explaining what changed between versions.
+"""
+
+@app.post("/api/xpath/analyze")
+async def xpath_analyze(request: XpathAnalyzeRequest):
+    """
+    Accepts source and target version view files, identifies broken XPath expressions,
+    and returns a ready-to-use Odoo upgrade migration script.
+    """
+    try:
+        source_block = build_file_block(request.source_files)
+        target_block = build_file_block(request.target_files)
+
+        prompt = f"""{UPGRADE_SCRIPT_SYSTEM_PROMPT}
+
+---
+
+## Task
+
+Analyze the view files below and generate an Odoo Python upgrade migration script.
+
+**Source Odoo version:** {request.source_version}
+**Target Odoo version:** {request.target_version}
+
+---
+
+## Source Version Files (v{request.source_version})
+
+{source_block}
+
+---
+
+## Target Version Files (v{request.target_version})
+
+{target_block}
+
+---
+
+## Instructions
+
+1. Compare the source base view(s) against the target base view(s) to find all fields, buttons, or structural elements that were renamed, removed, or moved between v{request.source_version} and v{request.target_version}.
+2. For each studio (inherited) file in the **source** version, identify every XPath expression or field reference that is now broken in v{request.target_version}.
+3. Generate a complete `migrate(cr, version)` function following the company standard above that fixes all broken paths.
+4. Output ONLY the Python migration script. No markdown fences, no explanations — just the raw Python code.
+"""
+
+        response = gemini_model.generate_content(prompt)
+        script = response.text.strip()
+
+        # Strip accidental markdown fences if LLM adds them
+        if script.startswith("```"):
+            script = "\n".join(script.split("\n")[1:])
+        if script.endswith("```"):
+            script = "\n".join(script.split("\n")[:-1])
+
+        return {"script": script.strip()}
+
+    except Exception as e:
+        print(f"Xpath analyze error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)

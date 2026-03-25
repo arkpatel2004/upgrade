@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Plus, MoreVertical, Trash2, Code2, FilePlus, ChevronDown, ArrowRight } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import axios from 'axios';
+import { ArrowLeft, Plus, MoreVertical, Trash2, Code2, FilePlus, ChevronDown, ArrowRight, Download, Copy, Check, Loader2, Zap } from 'lucide-react';
 
 // ── Odoo versions list ────────────────────────────────────────
 const ODOO_VERSIONS = [
@@ -207,12 +208,15 @@ function FileRow({ file, onAddInherited, onAddCode, onDelete, onUpdate, openCode
 }
 
 // ── Panel (left or right) ──────────────────────────────────────
-function Panel({ label, color }) {
+function Panel({ label, color, onStateChange }) {
     const [version, setVersion] = useState('');
     const [dropOpen, setDropOpen] = useState(false);
     const [files, setFiles] = useState([]);
     const [openCodeId, setOpenCodeId] = useState(null);
     const dropRef = useRef(null);
+
+    // Push state up whenever version or files change
+    useEffect(() => { onStateChange?.({ version, files }); }, [version, files]);
 
     useEffect(() => {
         const handler = e => { if (!dropRef.current?.contains(e.target)) setDropOpen(false); };
@@ -228,7 +232,6 @@ function Panel({ label, color }) {
     const addInheritedFile = (parentId) => {
         const id = getNextChildId(files, parentId);
         setFiles(prev => {
-            // Insert after the last descendant of this parent (any file whose id starts with parentId+".")
             const prefix = parentId + '.';
             const parentIdx = prev.findIndex(f => f.id === parentId);
             const lastDescIdx = prev.reduce(
@@ -336,6 +339,54 @@ function Panel({ label, color }) {
 
 // ── Main XpathApp component ────────────────────────────────────
 export default function XpathApp({ onBack }) {
+    const [sourceState, setSourceState] = useState({ version: '', files: [] });
+    const [targetState, setTargetState] = useState({ version: '', files: [] });
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [result, setResult] = useState(null);   // generated script string
+    const [error, setError] = useState(null);
+    const [copied, setCopied] = useState(false);
+
+    const canAnalyze =
+        sourceState.version &&
+        targetState.version &&
+        sourceState.files.some(f => f.code.trim()) &&
+        targetState.files.some(f => f.code.trim());
+
+    const handleAnalyze = async () => {
+        setIsAnalyzing(true);
+        setResult(null);
+        setError(null);
+        try {
+            const resp = await axios.post('http://127.0.0.1:8000/api/xpath/analyze', {
+                source_version: sourceState.version,
+                target_version: targetState.version,
+                source_files: sourceState.files.map(f => ({ name: f.name, code: f.code, isStudio: f.isStudio })),
+                target_files: targetState.files.map(f => ({ name: f.name, code: f.code, isStudio: f.isStudio })),
+            });
+            setResult(resp.data.script);
+        } catch (e) {
+            setError(e.response?.data?.detail || 'Failed to connect to backend.');
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(result);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleDownload = () => {
+        const blob = new Blob([result], { type: 'text/x-python' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `upgrade_${sourceState.version}_to_${targetState.version}.py`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
     return (
         <div className="flex flex-col h-screen w-screen bg-[#343541] text-gray-100 font-sans overflow-hidden">
 
@@ -349,7 +400,6 @@ export default function XpathApp({ onBack }) {
                     <span>Home</span>
                 </button>
                 <div className="flex items-center gap-2 border-l border-white/10 pl-4">
-                    {/* Xpath SVG */}
                     <svg viewBox="0 0 64 64" className="w-5 h-5" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <defs>
                             <linearGradient id="xHdrApp" x1="0" y1="0" x2="1" y2="1">
@@ -362,18 +412,12 @@ export default function XpathApp({ onBack }) {
                     </svg>
                     <h1 className="text-lg font-semibold">Xpath Upgrade Analyzer</h1>
                 </div>
-                <div className="ml-auto text-xs text-gray-500 font-mono bg-white/5 px-2 py-1 rounded hidden sm:block">
-                    UI Preview
-                </div>
             </header>
 
             {/* Two-panel body */}
             <main className="flex-1 flex gap-4 p-4 overflow-hidden min-h-0">
+                <Panel label="Source Version" color="emerald" onStateChange={setSourceState} />
 
-                {/* Source panel */}
-                <Panel label="Source Version" color="emerald" />
-
-                {/* Center arrow */}
                 <div className="flex items-center justify-center shrink-0 self-center">
                     <div className="flex flex-col items-center gap-1">
                         <ArrowRight className="w-6 h-6 text-gray-600" />
@@ -381,22 +425,70 @@ export default function XpathApp({ onBack }) {
                     </div>
                 </div>
 
-                {/* Target panel */}
-                <Panel label="Target Version" color="blue" />
-
+                <Panel label="Target Version" color="blue" onStateChange={setTargetState} />
             </main>
 
             {/* Analyze footer */}
             <div className="shrink-0 px-4 pb-4 flex justify-center">
                 <button
-                    disabled
-                    className="px-10 py-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-500 text-sm font-semibold cursor-not-allowed"
-                    title="Coming soon"
+                    onClick={handleAnalyze}
+                    disabled={!canAnalyze || isAnalyzing}
+                    className={`flex items-center gap-2 px-10 py-2.5 rounded-xl text-sm font-semibold transition-all
+                        ${ canAnalyze && !isAnalyzing
+                            ? 'bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/40 text-orange-300 hover:text-orange-200'
+                            : 'bg-white/5 border border-white/10 text-gray-500 cursor-not-allowed'
+                        }`}
+                    title={!canAnalyze ? 'Select versions and add files with code to both panels first' : ''}
                 >
-                    Analyze XPath Issues
+                    {isAnalyzing
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing…</>
+                        : <><Zap className="w-4 h-4" /> Analyze XPath Issues</>
+                    }
                 </button>
             </div>
 
+            {/* Result modal */}
+            {(result || error || isAnalyzing) && (
+                <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-6" onClick={() => { if (!isAnalyzing) { setResult(null); setError(null); } }}>
+                    <div className="bg-[#1C1E24] border border-white/10 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+
+                        {/* Modal header */}
+                        <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
+                            <span className="text-sm font-semibold text-gray-200">
+                                {isAnalyzing ? 'Generating upgrade script…' : error ? 'Error' : `upgrade_${sourceState.version}_to_${targetState.version}.py`}
+                            </span>
+                            {!isAnalyzing && !error && result && (
+                                <div className="flex items-center gap-2">
+                                    <button onClick={handleCopy} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 transition-colors">
+                                        {copied ? <><Check className="w-3.5 h-3.5 text-emerald-400" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
+                                    </button>
+                                    <button onClick={handleDownload} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-300 transition-colors">
+                                        <Download className="w-3.5 h-3.5" /> Download .py
+                                    </button>
+                                    <button onClick={() => { setResult(null); setError(null); }} className="px-3 py-1.5 text-xs rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 transition-colors">Close</button>
+                                </div>
+                            )}
+                            {error && <button onClick={() => setError(null)} className="px-3 py-1.5 text-xs rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 transition-colors">Close</button>}
+                        </div>
+
+                        {/* Modal body */}
+                        <div className="flex-1 overflow-y-auto">
+                            {isAnalyzing && (
+                                <div className="flex flex-col items-center justify-center h-48 gap-3">
+                                    <Loader2 className="w-8 h-8 animate-spin text-orange-400" />
+                                    <p className="text-gray-400 text-sm">Gemini is analyzing XPath differences…</p>
+                                </div>
+                            )}
+                            {error && !isAnalyzing && (
+                                <div className="p-5 text-sm text-red-300 bg-red-500/5">{error}</div>
+                            )}
+                            {result && !isAnalyzing && (
+                                <pre className="p-5 text-xs font-mono text-gray-200 whitespace-pre-wrap leading-relaxed">{result}</pre>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
