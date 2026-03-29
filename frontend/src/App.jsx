@@ -108,19 +108,8 @@ function App() {
   // ── DASHBOARD ─────────────────────────────────────────────────
   const renderDashboard = () => (
     <div className="min-h-screen w-full h-screen relative bg-black flex flex-col overflow-hidden">
-      {/* Northern Aurora */}
-      <div
-        className="absolute inset-0 z-0 pointer-events-none"
-        style={{
-          background: `
-            radial-gradient(ellipse 70% 55% at 50% 50%, rgba(255, 20, 147, 0.15), transparent 50%),
-            radial-gradient(ellipse 160% 130% at 10% 10%, rgba(0, 255, 255, 0.12), transparent 60%),
-            radial-gradient(ellipse 160% 130% at 90% 90%, rgba(138, 43, 226, 0.18), transparent 65%),
-            radial-gradient(ellipse 110% 50% at 80% 30%, rgba(255, 215, 0, 0.08), transparent 40%),
-            #000000
-          `,
-        }}
-      />
+      {/* Simple Minimalistic Background */}
+      <div className="absolute inset-0 z-0 bg-[#0A0A0A]" />
 
       {/* Navbar */}
       <header className="relative z-10 flex items-center justify-between px-6 py-3 border-b border-white/5 bg-black/40 backdrop-blur-md shrink-0">
@@ -130,16 +119,16 @@ function App() {
         <div className="relative" id="profile-btn">
           <button
             onClick={() => setProfileOpen((v) => !v)}
-            className="w-9 h-9 rounded-full bg-white/10 hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-500/40 flex items-center justify-center transition-all"
+            className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 flex items-center justify-center transition-all"
             aria-label="Profile menu"
           >
-            <User className="w-5 h-5 text-gray-300" />
+            <User className="w-5 h-5 text-gray-400" />
           </button>
 
           {profileOpen && (
-            <div className="absolute right-0 top-full mt-2 w-36 bg-[#141414] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+            <div className="absolute right-0 top-full mt-2 w-36 bg-[#111111] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
               <button
-                className="flex items-center gap-2 w-full px-4 py-3 text-sm text-red-400 hover:bg-white/5 transition-colors"
+                className="flex items-center gap-2 w-full px-4 py-3 text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
                 onClick={() => setProfileOpen(false)}
               >
                 <LogOut className="w-4 h-4" />
@@ -160,12 +149,7 @@ function App() {
             className="flex flex-col items-center gap-4 cursor-pointer group"
           >
             <div
-              className="w-24 h-24 sm:w-32 sm:h-32 rounded-3xl flex items-center justify-center transition-all duration-300 group-hover:scale-105"
-              style={{
-                background: "linear-gradient(135deg, rgba(16,185,129,0.15), rgba(88,28,235,0.15))",
-                boxShadow: "0 0 30px rgba(16,185,129,0.25), 0 0 60px rgba(16,185,129,0.1), inset 0 1px 0 rgba(255,255,255,0.08)",
-                border: "1px solid rgba(16,185,129,0.3)",
-              }}
+              className="w-24 h-24 sm:w-32 sm:h-32 rounded-3xl flex items-center justify-center transition-all bg-[#1A1A1A] hover:bg-[#222222] border border-white/10 hover:border-emerald-500/30 group-active:scale-95"
             >
               {/* Reply: speech bubble + bolt SVG */}
               <svg viewBox="0 0 64 64" className="w-16 h-16 sm:w-20 sm:h-20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -190,12 +174,7 @@ function App() {
             className="flex flex-col items-center gap-4 cursor-pointer group"
           >
             <div
-              className="w-24 h-24 sm:w-32 sm:h-32 rounded-3xl flex items-center justify-center transition-all duration-300 group-hover:scale-105"
-              style={{
-                background: "linear-gradient(135deg, rgba(249,115,22,0.15), rgba(236,72,153,0.15))",
-                boxShadow: "0 0 30px rgba(249,115,22,0.2), 0 0 60px rgba(249,115,22,0.08), inset 0 1px 0 rgba(255,255,255,0.08)",
-                border: "1px solid rgba(249,115,22,0.3)",
-              }}
+              className="w-24 h-24 sm:w-32 sm:h-32 rounded-3xl flex items-center justify-center transition-all bg-[#1A1A1A] hover:bg-[#222222] border border-white/10 hover:border-orange-500/30 group-active:scale-95"
             >
               {/* Xpath: bold X SVG */}
               <svg viewBox="0 0 64 64" className="w-16 h-16 sm:w-20 sm:h-20" fill="none" xmlns="http://www.w3.org/2000/svg">
