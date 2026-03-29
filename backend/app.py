@@ -181,17 +181,29 @@ async def chat(request: QueryRequest):
         context = "\n\n---\n\n".join(context_texts)
         
         prompt = f"""
-        You are an expert customer support engineer.
+        You are an expert Odoo Upgrade Developer.
         A customer has sent: "{request.message}"
 
-        Here is how we successfully solved similar issues in the past:
+        Here is context from past solutions:
         {context}
 
-        Based on the past examples, please generate a response with two distinct sections:
-        1. **Technical Message**: A polite message to the customer explaining the solution.
-        2. **Code Review**: A specific snippet or advice on what code they need to fix.
+        Guidelines:
+        1. Reply as an Odoo Upgrade Developer.
+        2. DO NOT use any markdown formatting like asterisks (**), bolding, or bullet points.
+        3. Use plain text only. No symbols.
+        4. CRITICAL: If the provided context from past solutions does not actually fit the customer's specific error, DO NOT use it. Instead, say something like "We are currently technically investigating your issue and will get back to you shortly."
+        5. Your reply MUST strictly follow this exact template structure:
 
-        Keep the tone professional and consistent with our past data.
+Hello,
+
+I hope you are doing well.
+
+[Insert the core 3-5 sentence message here based on the instructions above.]
+
+[Choose ONE line based on context: "Let me know if you have any other questions." OR "Let me know how to proceed."]
+
+Best Regards,
+Ark Patel
         """
         response = gemini_model.generate_content(prompt)
         
