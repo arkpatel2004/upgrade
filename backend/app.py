@@ -29,15 +29,21 @@ class CSVWatcher(FileSystemEventHandler):
 # --- 2. Lifespan Manager ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Run the watcher in a separate thread
+    # Startup: Auto-ingest data.csv because Render wipes the free-tier drive
+    print("Auto-ingesting data.csv on startup to hydrate ChromaDB...")
+    try:
+        # We use a direct internal function call here
+        await perform_ingestion()
+    except Exception as e:
+        print(f"Startup ingestion failed: {e}")
+        
+    # Also run the file watcher for local dev convenience
     observer = Observer()
     observer.schedule(CSVWatcher(), path=".", recursive=False)
     observer.start()
     print("Background CSV Watcher started...")
     
-    yield  # The application runs here
-    
-    # Shutdown: Clean up the thread
+    yield
     observer.stop()
     observer.join()
     print("Background CSV Watcher stopped.")
@@ -54,9 +60,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize Clients
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-# Using 2.5 flash as verified working with user API Key Quotas
+# Using 2.5 flash
 gemini_model = genai.GenerativeModel('gemini-2.5-flash')
 
 # Vector Database
@@ -70,7 +75,6 @@ class QueryRequest(BaseModel):
 def get_embedding(text: str) -> list[float]:
     """Get the Gemini embedding for a given text documents."""
     try:
-        # Using 001 because it's the only one allowed on user's API Key
         result = genai.embed_content(model="models/gemini-embedding-001", content=text)
         return result['embedding']
     except Exception as e:
@@ -86,61 +90,65 @@ def get_query_embedding(text: str):
           print(f"Error generating query embedding: {e}")
           return str(e)
 
-@app.post("/api/ingest")
-async def ingest_csv():
+async def perform_ingestion():
+    """Core logic to wipe DB and ingest from data.csv"""
+    print("Starting ingestion process...")
+    if not os.path.exists("data.csv"):
+        raise Exception("data.csv not found")
+
+    # --- WIPE THE DATABASE CLEAN FIRST ---
+    print("Wiping database collection clean to prevent ghost data...")
+    global collection
     try:
-        print("Starting ingestion process...")
-        if not os.path.exists("data.csv"):
-            raise HTTPException(status_code=404, detail="data.csv not found")
+        chroma_client.delete_collection(name=collection_name)
+        collection = chroma_client.get_or_create_collection(name=collection_name)
+        print("Database is now empty and ready for fresh data.")
+    except Exception as e:
+        print(f"Failed to delete collection, it might be empty already: {e}")
+    # -----------------------------------------------
 
-        # --- NEW CODE: WIPE THE DATABASE CLEAN FIRST ---
-        print("Wiping database collection clean to prevent ghost data...")
-        global collection
-        try:
-            chroma_client.delete_collection(name=collection_name)
-            collection = chroma_client.get_or_create_collection(name=collection_name)
-            print("Database is now empty and ready for fresh data.")
-        except Exception as e:
-            print(f"Failed to delete collection, it might be empty already: {e}")
-        # -----------------------------------------------
+    df = pd.read_csv("data.csv")
+    
+    documents = []
+    metadatas = []
+    ids = []
+    embeddings = []
+    
+    for index, row in df.iterrows():
+        print(f"Processing row {index + 1}/{len(df)}...")
+        content = f"Customer Query: {row['customer_message']}\nOur Standard Response: {row['company_response']}"
+        embedding = get_embedding(content)
+        
+        if not embedding:
+            print(f"Warning: skipped embedding for row {index}")
+            continue
+            
+        documents.append(content)
+        metadatas.append({"company_response": row["company_response"]})
+        ids.append(f"doc_{index}")
+        embeddings.append(embedding)
+        
+        # Rate limiting logic: wait 3 seconds to stay under Google Free Tier 15 RPM
+        if index < len(df) - 1:
+            await asyncio.sleep(3)
+            
+    if documents:
+        collection.upsert(
+            documents=documents,
+            embeddings=embeddings,
+            metadatas=metadatas,
+            ids=ids
+        )
+        print(f"Finished! Ingested {len(documents)} records.")
+        return {"message": f"Successfully ingested {len(documents)} records using Gemini."}
+    else:
+        return {"message": "No documents were processed successfully."}
 
-        df = pd.read_csv("data.csv")
-        
-        documents = []
-        metadatas = []
-        ids = []
-        embeddings = []
-        
-        for index, row in df.iterrows():
-            print(f"Processing row {index + 1}/{len(df)}...")
-            content = f"Customer Query: {row['customer_message']}\nOur Standard Response: {row['company_response']}"
-            embedding = get_embedding(content)
-            
-            if not embedding:
-                print(f"Warning: skipped embedding for row {index}")
-                continue
-                
-            documents.append(content)
-            metadatas.append({"company_response": row["company_response"]})
-            ids.append(f"doc_{index}")
-            embeddings.append(embedding)
-            
-            # Rate limiting logic: wait 3 seconds to stay under Google Free Tier 15 RPM
-            if index < len(df) - 1:
-                await asyncio.sleep(3)
-                
-        if documents:
-            collection.upsert(
-                documents=documents,
-                embeddings=embeddings,
-                metadatas=metadatas,
-                ids=ids
-            )
-            print(f"Finished! Ingested {len(documents)} records.")
-            return {"message": f"Successfully ingested {len(documents)} records using Gemini."}
-        else:
-            return {"message": "No documents were processed successfully."}
-            
+@app.post("/api/ingest")
+async def ingest_csv_endpoint():
+    try:
+        result = await perform_ingestion()
+        return result
     except Exception as e:
         print(f"Ingest Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
