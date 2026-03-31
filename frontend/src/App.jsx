@@ -32,7 +32,7 @@ function App() {
   useEffect(() => {
     const fetchStages = async () => {
       try {
-        const response = await axios.get('http://127.0.0.1:8000/api/stages');
+        const response = await axios.get('https://upgrade-backend-1pw0.onrender.com/api/stages');
         setStages(response.data || []);
       } catch (error) {
         console.error('Failed to load stages', error);
@@ -58,7 +58,7 @@ function App() {
     setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/chat', { message: userMessage });
+      const response = await axios.post('https://upgrade-backend-1pw0.onrender.com/api/chat', { message: userMessage });
       setMessages((prev) => [
         ...prev,
         { role: 'assistant', content: response.data.response, contextCount: response.data.retrieved_context_count }
