@@ -357,7 +357,7 @@ export default function XpathApp({ onBack }) {
         setResult(null);
         setError(null);
         try {
-            const resp = await axios.post('http://127.0.0.1:8000/api/xpath/analyze', {
+            const resp = await axios.post('https://upgrade-backend-1pw0.onrender.com/api/xpath/analyze', {
                 source_version: sourceState.version,
                 target_version: targetState.version,
                 source_files: sourceState.files.map(f => ({ name: f.name, code: f.code, isStudio: f.isStudio })),
