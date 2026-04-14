@@ -235,12 +235,6 @@ function App() {
                     </div>
                     <div className={`relative group px-5 py-3.5 rounded-2xl shadow-sm ${msg.isError ? 'bg-red-500/20 text-red-200 border border-red-500/30 rounded-tl-none' : 'bg-[#444654] border border-white/5 rounded-tl-none'}`}>
                       <div className="prose prose-invert max-w-none text-[15px] whitespace-pre-wrap leading-relaxed">{msg.content}</div>
-                      {msg.contextCount > 0 && (
-                        <div className="flex items-center gap-1 mt-3 text-xs text-emerald-300 bg-emerald-900/30 w-fit px-2 py-1 rounded-md border border-emerald-500/20">
-                          <Link2 className="w-3 h-3" />
-                          <span>Drafted using {msg.contextCount} past company emails</span>
-                        </div>
-                      )}
                       {!msg.isError && (
                         <div className="absolute -right-10 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                           <button
